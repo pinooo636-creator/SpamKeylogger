@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spam Keylogger By Pinoo</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    color: white;
+    height: 100%;
+  }
+
+  body {
+    background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+  }
+
+  canvas#stars {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: -1;
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    padding: 15px;
+    text-align: center;
+  }
+
+  h2 {
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.3);
+  }
+
+  input, textarea {
+    width: 100%;
+    margin: 6px 0;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.4);
+    color: white;
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+  }
+
+  button {
+    width: 100%;
+    margin: 6px 0;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 15px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  button:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 15px rgba(255,255,255,0.3);
+  }
+
+  .spam { background: #555; color: white; }
+  .status { background: #3b6ef7; color: white; }
+  .delete { background: #3b6ef7; color: white; }
+  .clear { background: #e74c3c; color: white; }
+
+  #info, #log {
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 6px;
+    text-align: left;
+    max-height: 250px;
+    overflow-y: auto;
+    font-size: 14px;
+    white-space: pre-line;
+  }
+
+  footer {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #ccc;
+    text-shadow: 0 0 6px rgba(255,255,255,0.2);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<main>
+  <h2>Spam Keylogger By Pinoo</h2>
+
+  <input type="text" id="webhook" placeholder="Webhook URL:">
+  <input type="text" id="username" placeholder="Nama Pengirim:">
+  <textarea id="message" rows="3" placeholder="Pesan:"></textarea>
+  <input type="number" id="delay" placeholder="Delay Kirim (ms, contoh: 1000)" value="1000" min="100">
+
+  <!-- Tombol Spam -->
+  <button class="spam" onclick="toggleSpam()">Spam: OFF</button>
+  <button class="status" onclick="checkWebhook()">Cek Status Webhook</button>
+  <button class="delete" onclick="deleteWebhook()">Hapus Webhook</button>
+  <button class="clear" onclick="clearLog()">Clear Log</button>
+
+  <div id="info"></div>
+  <div id="log"></div>
+
+  <footer>Developer by <b>pino</b></footer>
+</main>
+
+<script>
+let spamActive = false;
+let spamInterval;
+let logCount = 0;
+let warningShown = false; // biar pesan "isi webhook dulu ganteng" cuma muncul sekali
+
+// ====== Animasi Galaxy ======
+const canvas = document.getElementById("stars");
+const ctx = canvas.getContext("2d");
+let stars = [];
+let w, h;
+
+function resize() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.onresize = resize;
+resize();
+
+for (let i = 0; i < 150; i++) {
+  stars.push({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    z: Math.random() * 2,
+    r: Math.random() * 1.5,
+  });
+}
+
+function drawStars() {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "white";
+  stars.forEach(star => {
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+    ctx.fill();
+    star.y += star.z;
+    if (star.y > h) {
+      star.y = 0;
+      star.x = Math.random() * w;
+    }
+  });
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+// ====== Akhir Animasi ======
+
+function log(msg) {
+  const logBox = document.getElementById("log");
+  logCount++;
+  logBox.innerHTML += logCount + ". " + msg + "\n";
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+async function sendSpamMessage() {
+  const url = document.getElementById("webhook").value.trim();
+  const username = document.getElementById("username").value || "Anonim";
+  const message = document.getElementById("message").value.trim();
+
+  // Cek jika webhook atau pesan kosong
+  if (!url || !message) return; // tidak log spam di sini
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, content: message })
+    });
+    log("[INFO] Pesan spam terkirim: " + message);
+  } catch {
+    log("[ERROR] Gagal mengirim pesan spam!");
+  }
+}
+
+function toggleSpam() {
+  const url = document.getElementById("webhook").value.trim();
+  const message = document.getElementById("message").value.trim();
+
+  if (!url || !message) {
+    if (!warningShown) {
+      log("isi duluh ya ganteng semuanya");
+      warningShown = true;
+    }
+    return; // tidak lanjut ke proses spam
+  }
+
+  warningShown = false; // reset jika sudah diisi
+
+  spamActive = !spamActive;
+  const btn = document.querySelector(".spam");
+  const delay = parseInt(document.getElementById("delay").value) || 1000;
+
+  if (spamActive) {
+    btn.textContent = "Spam: ON";
+    btn.style.background = "#6c2dc7";
+    spamInterval = setInterval(sendSpamMessage, delay);
+    log("Spam dimulai dengan delay " + delay);
+  } else {
+    btn.textContent = "Spam: OFF";
+    btn.style.background = "#555";
+    clearInterval(spamInterval);
+    log("[INFO] Spam dihentikan");
+  }
+}
+
+async function checkWebhook() {
+  const url = document.getElementById("webhook").value.trim();
+  if (!url) return log("isi duluh ya sayang url webhook nya baru kita bisa cek");
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    document.getElementById("info").innerText =
+      "Webhook Aktif\n" +
+      "Nama: " + (data.name || "Tidak Ada") + "\n" +
+      "Webhook ID: " + (data.id || "-") + "\n" +
+      "Channel ID: " + (data.channel_id || "-") + "\n" +
+      "Guild ID: " + (data.guild_id || "-") + "\n" +
+      "Avatar: " + (data.avatar ? "Ada" : "Tidak Ada");
+  } catch {
+    document.getElementById("info").innerText = "Webhook tidak valid!";
+  }
+}
+
+async function deleteWebhook() {
+  const url = document.getElementById("webhook").value.trim();
+  if (!url) return log("adu sayang masukin url webhook nya duluh baru di hapus");
+
+  try {
+    await fetch(url, { method: "DELETE" });
+    log("mampus webhook nya kita hapus");
+  } catch {
+    log("adu gagal kita wak hapus webhook nya");
+  }
+}
+
+function clearLog() {
+  document.getElementById("log").innerText = "";
+  logCount = 0;
+}
+</script>
+
+</body>
+</html>
